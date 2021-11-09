@@ -1,0 +1,149 @@
+@charset "utf-8";
+
+@font-face {font-family: 'iconfont';
+    src: url('../fonts/iconfont.eot');
+    src: url('../fonts/iconfont.eot?#iefix') format('embedded-opentype'),
+    url('../fonts/iconfont.woff') format('woff'),
+    url('../fonts/iconfont.ttf') format('truetype'),
+    url('../fonts/iconfont.svg#iconfont') format('svg');
+}
+
+.iconfont{
+    font-family:"iconfont" !important;
+    font-size:25px;font-style:normal;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-stroke-width: 0.2px;
+    -moz-osx-font-smoothing: grayscale;}
+a{
+    list-style: none;
+    text-decoration: none;
+    
+}
+
+
+.banner ul li {
+    list-style: none;
+    display: inline-block;
+    position: absolute;
+}
+
+
+
+
+.banner .img_rotate{
+    animation: img_rotate 7s infinite linear;
+}
+
+
+
+
+
+
+.music {
+    width: 550px;
+    height: 120px;
+    background: blue;
+    position: fixed;
+    left: 0;
+    bottom: 50px;
+    opacity: 0.7;
+    box-shadow:16px 15px 6px 1px black  ;
+}
+
+
+
+.music .m_img {
+    margin-top: 15px;
+    margin-left: 10px;
+    float: left;
+}
+
+.music .m_text {
+    float: left;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 50px;
+    margin-left: 20px;
+}
+
+.music .m_btn {
+    float: left;
+    position: absolute;
+    left: 320px;
+
+}
+
+.music .m_btn a {
+    float: left;
+    width: 35px;
+    height: 35px;
+    margin-top: 50px;
+    margin-left: 20px;
+}
+
+.music .m_btn .m_prev {
+    color: white;
+}
+.music .m_btn .m_prev:hover {
+    color:yellow;
+}
+
+
+
+.music .m_btn .m_play {
+    color: white;
+    /* display: none; */
+}
+.music .m_btn .m_play:hover {
+    color:yellow;
+
+}
+
+.music .m_btn .m_pause {
+    color: white;   
+    display: none;
+}
+
+.music .m_btn .m_pause:hover{
+    color: yellow;
+}
+
+
+
+.music .m_btn .m_next {
+    color: white;
+}
+.music .m_btn .m_next:hover {
+    color: yellow;
+}
+
+.music .m_close a i{
+    float: right;
+    margin-top: 50px;
+    color: white;
+    cursor: pointer;
+
+}
+
+
+.music .m_close a i:hover {
+    color: yellow;
+}
+
+
+.music .m_open {
+    background-position: 0px 0px;
+    
+}
+
+
+
+
+
+
+
+
+
+
+

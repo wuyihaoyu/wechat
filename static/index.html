@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <title>聊天室</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+  <meta name="author" content="">
+  <link rel="SHORTCUT ICON" href="/static/images/logo.png">
+  <link rel="stylesheet" href="//at.alicdn.com/t/font_802715_2hjg77fzx1v.css">
+  <link rel="stylesheet" href="/static/css/common.css">
+  <link rel="stylesheet" href="/static/css/music.css">
+</head>
+
+<body>
+  <div id="app"></div>
+  <!--主界面-->
+  <template id="webChat">
+    <div class="webChat-warp">
+      <div class="webChat-container webChat-clear" v-if="loginUser.id">
+        <div class="webChat-panel">
+          <div class="webChat-clear webChat-panel-item" v-show="curMenu=='chat'">
+            <div class="webChat-users-warp">
+              <div class="webChat-search-container">
+                <span class="iconfont icon-search"></span>
+                <input type="text" placeholder="搜索" v-model="keyword" class="webChat-search-input">
+              </div>
+              <div class="webChat-users-container">
+                <div class="webChat-user-list scroll">
+                  <user-item :user="item" @click.native="changeSession(item)" :class="{active:item.id===curSession.id}"
+                    v-for="item in searchUser(keyword)" :num="getUnReadNum(item.id)" :key="item.id">
+                    <div slot="time" v-if="getLatestMessage(item.id).time">{{getLatestMessage(item.id).time |
+                      friendlyTime}}</div>
+                    <span slot="message" v-if="getLatestMessage(item.id).type==='text'">
+                      <message-text :text="getLatestMessage(item.id).content"></message-text>
+                    </span>
+                    <div slot="message" v-if="getLatestMessage(item.id).type==='image'">【图片】</div>
+                  </user-item>
+                </div>
+              </div>
+            </div>
+            <div class="webChat-session-panel" v-if="curSession.id">
+              <div class="webChat-session-header">
+                <img :src="curSession.avatarUrl" alt="" class="webChat-session-avatar">
+                <span class="webChat-session-name">{{curSession.name}}</span>
+                <span class="webChat-session-text" v-if="curSession.type==='group'">({{onlineUsers.length}})</span>
+                <span class="iconfont user-device" v-if="curSession.deviceType"
+                  :class="{'icon-phone':curSession.deviceType==='phone','icon-pc':curSession.deviceType==='pc'}"></span>
+                <span class="webChat-session-text" v-if="curSession.ip">({{curSession.ip}})</span>
+              </div>
+              <div class="webChat-session-messages">
+                <div class="webChat-message-list scroll" ref="message-list">
+                  <message-item v-for="(item,i) in messages" :is-send="loginUser.id===item.from.id" :setting="setting"
+                    :key="i" :message="item">
+                    <div class="message-content-container" slot="message" v-if="item.type==='text'">
+                      <message-text :text="item.content"></message-text>
+                    </div>
+                    <div class="message-image-warp" slot="message" v-if="item.type==='image'" v-html="item.content">
+                    </div>
+                  </message-item>
+                </div>
+              </div>
+              <div class="webChat-session-tool">
+                <!-- <span class="iconfont icon-expression" @click.stop="toggleExpression"></span>
+                <label class="iconfont icon-img"> -->
+                <input type="file" class="webChat-img-file" accept="image/png, image/jpeg" @change="fileChange">
+                </label>
+                <transition name="slide">
+                  <div class="expression-panel-warp" v-show="isShowExpression">
+                    <div class="expression-panel-container">
+                      <div class="expression-item" v-for="item in expressions" :title="item.title"
+                        @click.stop="pickerExpression(item)" :key="item.title">
+                        <img :src="baseUrl+item.url" alt="">
+                      </div>
+                    </div>
+                  </div>
+                </transition>
+              </div>
+              <div class="webChat-session-footer">
+                <div class="webChat-textarea-warp">
+                  <textarea class="webChat-textarea scroll" placeholder="请输入信息" v-model="text"
+                    @keypress.enter="sendText(text)"></textarea>
+                </div>
+                <div class="webChat-sendBtn-warp">
+                  <button class="webChat-session-sendBtn" @click="sendText(text)">发送</button>
+                </div>
+              </div>
+            </div>
+            <div class="webChat-session-panel" v-else>
+              <!-- <span class="iconfont icon-wechat"></span> -->
+            </div>
+          </div>
+          <div class="webChat-clear webChat-panel-item" v-show="curMenu=='cog'">
+            <div class="webChat-setting-warp">
+              <div class="webChat-setting-header">设置</div>
+              <div class="webChat-setting-card webChat-clear">
+                <div class="webChat-card-avatar">
+                  <img :src="loginUser.avatarUrl" alt="">
+                </div>
+                <div class="webChat-card-info">
+                  <div class="webChat-card-infoRow webChat-card-name">{{loginUser.name}}</div>
+                  <div class="webChat-card-infoRow webChat-card-text">
+                    <span class="iconfont"
+                      :class="{'icon-phone':loginUser.deviceType==='phone','icon-pc':loginUser.deviceType==='pc'}"></span>
+                    {{loginUser.ip}}
+                  </div>
+                  <div class="webChat-card-infoRow webChat-card-text">{{loginUser.time | formatTime}}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="is-connect iconfont icon-09" v-if="socket&&!isConnect" title="断线重连"></span>
+        </div>
+      </div>
+      <login @login="login" ref="login" v-else></login>
+      <audio :src="audioUrl" ref="audio"></audio>
+    </div>
+  </template>
+  <!--消息组件-->
+  <template id="message-item">
+    <div class="message-item-warp webChat-clear" :class="isSend?'message-item-send':'message-item-receive'">
+      <div class="message-avatar">
+        <img :src="message.from.avatarUrl" alt="">
+      </div>
+      <div class="message-item-container">
+        <div class="message-info-container" v-if="setting.isName">
+          <!-- v-if 条件渲染 -->
+          <span class="message-info-time" v-if="isSend&&setting.isTime">{{message.time | friendlyTime}}</span>
+          <span class="message-info-name">{{message.from.name}}</span>
+          <span class="message-info-time" v-if="!isSend&&setting.isTime">{{message.time | friendlyTime}}</span>
+        </div>
+        <div class="message-content-warp">
+          <slot name="message">
+            <div class="message-content-container" v-html="message.content"></div>
+          </slot>
+        </div>
+      </div>
+    </div>
+  </template>
+  <!--用户组件-->
+  <template id="user-item">
+    <div class="user-item-warp webChat-clear">
+      <div class="user-item-avatar">
+        <img :src="user.avatarUrl" alt="">
+      </div>
+      <div class="user-info-warp">
+        <div class="user-item-infoRow">
+          <div class="user-item-name">{{user.name}}</div>
+          <span class="user-item-time">
+            <slot name="time"></slot>
+          </span>
+        </div>
+        <div class="user-item-infoRow">
+          <div class="user-item-message">
+            <slot name="message"></slot>
+          </div>
+          <span class="user-item-num" v-if="num>0">{{num>99?'99+':num}}</span>
+        </div>
+      </div>
+    </div>
+  </template>
+  <!--登录组件-->
+  <template id="login">
+    <div class="user-login-warp">
+      <div class="user-login-container">
+        <div class="user-login-banner"></div>
+        <div class="user-login-form-warp">
+          <div class="user-login-form">
+            <div class="user-login-avatar">
+              <img :src="user.avatarUrl" alt="" class="login-avatar" @click.stop="toggleAvatarSelect">
+              <transition name="slide">
+                <div class="select-avatar-warp" v-show="isShow">
+                  <div class="avatar-input-warp">
+                  </div>
+                  <ul class="avatar-list-warp">
+                    <li v-for="(item,i) in avatarList" :key="i" :class="{active:user.avatarUrl===item}"
+                      @click="user.avatarUrl=item">
+                      <img :src="item" alt="">
+                    </li>
+                  </ul>
+                </div>
+              </transition>
+            </div>
+            <div class="form-input-warp">
+              <div class="form-group">
+                <input type="text" class="form-input input-text" placeholder="用户名" v-model="user.name">
+              </div>
+              <div class="form-group">
+                <input type="password" class="form-input input-pass" placeholder="密码">
+              </div>
+              <div class="form-group form-btn-warp">
+                <button class="form-btn" type="button" @click="login">登录</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+  <!--弹窗消息组件-->
+  <template id="alter-message">
+    <transition name="alter-slide" @after-leave="delELe">
+      <div :class="'alter-message alter-message-'+type" ref="alter" v-show="show">{{msg}}</div>
+    </transition>
+  </template>
+
+  <!-- 音乐播放器 -->
+  <div class="banner">
+    <ul>
+      <li class="m1" datasrc="/static/mp3/1.mp3" title="演员-薛之谦">
+        <!-- <img src="img/1img.jpg" width="65"> -->
+      </li>
+      <li class="m2" datasrc="/static/mp3/2.mp3" title="三号线-刘大壮">
+        <!-- <img src="img/2img.jpg" width="90"> -->
+      </li>
+      <li class="m3" datasrc="/static/mp3/3.mp3" title="十年人间-李常超">
+        <!-- <img src="img/3img.jpg" width="119"> -->
+      </li>
+      <li class="m4" datasrc="/static/mp3/4.mp3" title="倒数-邓紫棋">
+        <!-- <img src="img/4img.jpg" width="90"> -->
+      </li>
+      <li class="m5" datasrc="/static/mp3/5.mp3" title="断桥残雪-许蒿">
+        <!-- <img src="img/5img.jpg" width="65"> -->
+      </li>
+    </ul>
+  </div>
+  <!-- banner end  -->
+  <div class="music">
+    <div class="m_img">
+      <img src="/static/img/1img.jpg" width="90px">
+    </div>
+    <div class="m_text">演员-薛之谦</div>
+    <div class="m_btn">
+
+      <a href="#" class="m_prev" title="上一首"><i class="iconfont">&#xe727;</i></a>
+      <a href="#" onclick="showon()" class="m_play" id="m_play" title="播放"><i class="iconfont">&#xe8a3;</i></a>
+      <a href="#" onclick="showon()" class="m_pause" id="m_pause" title="暂停"><i class="iconfont">&#xe609;</i></a>
+      <a href="#" class="m_next" title="下一首"><i class="iconfont">&#xe728;</i></a>
+    </div>
+    <div class="m_close m_open"><a href="#"><i class="iconfont">&#xe7c3;</i></a></div>
+    <audio src="/static/mp3/1.mp3" class="m_mp3"></audio>
+
+  </div>
+
+
+
+  <script type="text/javascript" src="/static/jquery.min.js"></script>
+  <script type="text/javascript" src="/static/js/music.js"></script>
+  <script src="/static/js/vue.min.2.2.0.js"></script>
+  <script src="/static/js/socket.io.js"></script>
+  <script src="/static/js/index.js"></script>
+</body>
+
+</html>
